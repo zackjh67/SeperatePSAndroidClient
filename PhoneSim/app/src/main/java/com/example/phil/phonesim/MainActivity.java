@@ -3,12 +3,10 @@ package com.example.phil.phonesim;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.DialogInterface;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -17,36 +15,16 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import org.parceler.Parcels;
 
-import java.util.Arrays;
-
-
-/*
-* Temporary comment-
-*
-* implementation of service that keeps itself running in background comes
-* from here: https://fabcirablog.weebly.com/blog/creating-a-never-ending-background-service-in-android
-*
-* ParcelableNotification listener setup comes from here: https://github.com/Chagall/notification-listener-service-example
-* credit to Chagall I guess
-* */
 
 public class MainActivity extends AppCompatActivity {
-    //intent for talking to service
-    Intent mServiceIntent;
-
-    //HomeService was intended to be the GEOFence listening service to check if user is home
-    //or not. This service restarts itself automatically if it is closed, so it will run indefinitely
-    private HomeService homeService;
-
-    //don't think this static context var is neccessary and can be done just using system methods
-    //but not sure.
+    //Used for ConnService
+    //Returns CTX
     Context ctx;
 
     //alert dialog prompting user to enable notification listening permissions for our app
@@ -55,9 +33,6 @@ public class MainActivity extends AppCompatActivity {
     //sys codes used by the alert dialog
     private static final String ENABLED_NOTIFICATION_LISTENERS = "enabled_notification_listeners";
     private static final String ACTION_NOTIFICATION_LISTENER_SETTINGS = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS";
-
-    //request code for user sign in used in Firebase Authentication
-    public static final int RC_SIGN_IN = 1;
 
     //connects to web service
     Button connectButton;
@@ -88,10 +63,10 @@ public class MainActivity extends AppCompatActivity {
         //listener service working again when demoing the app. This apparantly shouldn't happen with the
         //APK version, but look out for issues
 
-        //if(!isNotificationServiceEnabled()){
+        if(!isNotificationServiceEnabled()){
             enableNotificationListenerAlertDialog = buildNotificationServiceAlertDialog();
             enableNotificationListenerAlertDialog.show();
-        //}
+        }
 
         //connect button
         connectButton = findViewById(R.id.connect_button);
@@ -124,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(v -> {
             Log.i("CLICKED", "you clicked send");
             //sends a test notification for now
-            ParcelableNotification n = new ParcelableNotification("test", "test", "test", "test");
+            ParcelableNotification n = new ParcelableNotification("test", "test", "test", "This is a really long string because zack wants it to be super long because he loves JSON so much he shoul dmarry it. ");
             Parcelable parcN = Parcels.wrap(n);
             ConnService.sendNotification(getCtx(), parcN);
         });
@@ -146,16 +121,34 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-
-    //stops service when activity is killed by android or task manager
-    //just there to prove a point that the HomeService is configured to boot up again when
-    //this happens
     @Override
-    protected void onDestroy() {
-        stopService(mServiceIntent);
-        Log.i("MAINACT", "onDestroy!");
-        super.onDestroy();
+    protected void onStart() {
+        super.onStart();
 
+        //filter for connected
+        //the certain intent to listen for, ignores all others
+        IntentFilter connectedFilter;
+        //broadcast status code sent through an intent from ConnService
+        connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
+        //registering receiver to start listening for this intent
+        LocalBroadcastManager.getInstance(this).registerReceiver
+                (statusReceiver, connectedFilter);
+
+        //TODO register disconnect intent filter (same as above) (done by zack yo)
+        IntentFilter disconnectedFilter;
+        //broadcast status code sent through an intent from ConnService
+        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
+        //registering receiver to start listening for this intent
+        LocalBroadcastManager.getInstance(this).registerReceiver
+                (statusReceiver, disconnectedFilter);
+
+        //filter for notification sent
+        IntentFilter notificationSentFilter;
+        //broadcast status code sent through an intent from ConnService
+        notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
+        //registering receiver to start listening for this intent
+        LocalBroadcastManager.getInstance(this).registerReceiver
+                (statusReceiver, notificationSentFilter);
     }
 
     /**
@@ -202,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
         return(alertDialogBuilder.create());
     }
 
-    /*
+    /**
     * This broadcast receiver receives messages from ConnService via IntentFilters
     * Only used for testing purposes right now i.e. toasts to show connected/message sent
     *
@@ -216,12 +209,9 @@ public class MainActivity extends AppCompatActivity {
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_CONNECTED)){
                 Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
-
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_DISCONNECTED)){
                 Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
-                connectButton.setEnabled(true);
-                disconnectButton.setEnabled(false);
             }
         }
     };
@@ -235,24 +225,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        //initial request code sent to firebaseUI
-        if (requestCode == RC_SIGN_IN) {
-            //code firebase passes back upon sign in success
-            if (resultCode == RESULT_OK) {
-                //quick toast to validate sign in successful
-                Toast.makeText(MainActivity.this, "Now Signed In!", Toast.LENGTH_SHORT).show();
-            }
-        }
+        registerIntentFilter();
     }
 
     @Override
     protected void onRestart() {
         super.onRestart();
+        registerIntentFilter();
+
+    }
+
+    protected void registerIntentFilter(){
         //filter for connected
         //the certain intent to listen for, ignores all others
         IntentFilter connectedFilter;
@@ -262,7 +245,12 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).registerReceiver
                 (statusReceiver, connectedFilter);
 
-        //TODO register disconnect intent filter (same as above)
+        IntentFilter disconnectedFilter;
+        //broadcast status code sent through an intent from ConnService
+        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
+        //registering receiver to start listening for this intent
+        LocalBroadcastManager.getInstance(this).registerReceiver
+                (statusReceiver, disconnectedFilter);
 
         //filter for notification sent
         IntentFilter notificationSentFilter;

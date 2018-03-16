@@ -3,7 +3,6 @@
     package="com.example.phil.phonesim">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!--<uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>-->
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -23,21 +22,6 @@
         </activity>
 
         <service
-            android:name=".HomeService"
-            android:enabled="true"
-            android:exported="true">
-        </service>
-
-        <receiver
-            android:name=".SensorRestarterBroadcastReceiver"
-            android:enabled="true"
-            android:exported="true"
-            android:label="RestartServiceWhenStopped">
-            <intent-filter>
-                <action android:name="uk.ac.shef.oak.ActivityRecognition.RestartSensor" />
-            </intent-filter>
-        </receiver>
-        <service
             android:name=".NotificationService"
             android:enabled="true"
             android:exported="true"
@@ -51,7 +35,5 @@
             android:enabled="true"
             android:exported="true">
         </service>
-
     </application>
-
 </manifest>

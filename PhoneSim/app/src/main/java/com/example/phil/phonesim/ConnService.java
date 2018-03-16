@@ -15,6 +15,7 @@ import android.widget.EditText;
 import org.parceler.Parcels;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -110,12 +111,15 @@ public class ConnService extends IntentService {
 
                     /* data passed to server */
             controlOut =
-                    new DataOutputStream(controlSocket.getOutputStream());
+                    new DataOutputStream(
+                            new BufferedOutputStream(
+                            controlSocket.getOutputStream()));
             sendMessage(controlOut,"Connect");
                     /* data passed to client */
             controlIn =
                     new DataInputStream(
-                                    controlSocket.getInputStream());
+                            new BufferedInputStream(
+                                    controlSocket.getInputStream()));
             String myResponse = getMessage(controlIn);
             if(myResponse.contains("404 OK")) {
                 //If you made it this far your connected
@@ -128,6 +132,7 @@ public class ConnService extends IntentService {
                 //send intent to broadcast receiver
                 LocalBroadcastManager.getInstance(this).sendBroadcast(result);
             }else{
+                Log.e("BADSERVER", "bad server response?");
                 throw new Exception("Bad Server Response");
             }
         } catch (Exception e){
@@ -151,6 +156,7 @@ public class ConnService extends IntentService {
         byte[] myMessageByte = myMessage.getBytes(("UTF-8"));
         int numberOfBytesWrite = 0;
         myStream.write(myMessageByte,0,myMessageByte.length);
+        myStream.flush();
     }
 
     private void disconnectNetwork(){
