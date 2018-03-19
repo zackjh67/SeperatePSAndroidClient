@@ -21,7 +21,7 @@ import android.widget.Toast;
 
 import org.parceler.Parcels;
 
-
+//SPRINT 2
 public class MainActivity extends AppCompatActivity {
     //Used for ConnService
     //Returns CTX
