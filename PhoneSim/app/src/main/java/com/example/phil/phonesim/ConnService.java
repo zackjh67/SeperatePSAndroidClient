@@ -1,16 +1,14 @@
 package com.example.phil.phonesim;
 
-/**
- * Created by phil on 2/19/18.
- */
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Parcelable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.util.Xml;
-import android.widget.EditText;
+
+
+import com.google.gson.Gson;
 
 import org.parceler.Parcels;
 
@@ -26,7 +24,7 @@ public class ConnService extends IntentService {
     static DataOutputStream controlOut;
     static DataInputStream controlIn;
 
-    //connection status, persist across all intentservice calls
+    //connection status, persist across all intent service calls
     static boolean connected = false;
 
     // intent actions
@@ -74,7 +72,7 @@ public class ConnService extends IntentService {
         context.startService(intent);
     }
 
-    /*
+    /**
     * this is the actual logic that the sendNotification intent method invokes
     *
     * sends notification over network to client
@@ -89,7 +87,8 @@ public class ConnService extends IntentService {
                 //TODO maybe use JSON format for messages, for now we will just pass the full
                 //text of the notification as a String
                 String test = n.getNotificationText();
-
+                Gson gson = new Gson();
+                test = gson.toJson(n);
                 sendMessage(controlOut,test +"\r\n");
                 //return intent with result code signalling message passed
                 Intent result = new Intent(BROADCAST_NOTIFICATION_SENT);
@@ -142,20 +141,37 @@ public class ConnService extends IntentService {
     }
 
     private String getMessage(DataInputStream myStream)  throws IOException {
-        byte[] myReadBuffer = new byte[1024];
+        byte[] lenBytes = new byte[4];
         int numberOfBytesRead = 0;
         StringBuilder myCompleteMessage = new StringBuilder();
-        do{
-           numberOfBytesRead = myStream.read(myReadBuffer,0,myReadBuffer.length);
-           myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
-        }while(myStream.available() > 0);
+        //do{
+        //   numberOfBytesRead = myStream.read(myReadBuffer,0,myReadBuffer.length);
+        //   myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
+        //}while(myStream.available() > 0);
+        myStream.read(lenBytes,0,4);
+        numberOfBytesRead = bytesToInt(lenBytes);
+        byte[] myReadBuffer = new byte[numberOfBytesRead];
+        myStream.read(myReadBuffer, 0, numberOfBytesRead);
+        myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
         return myCompleteMessage.toString();
     }
+    private int bytesToInt(byte[] byteValue){
+        int value = 0;
+        for(int i = 0; i < byteValue.length; i++){
+            value += ((int) byteValue[i] & 0xffL) << (8 * i);
+        }
+        return value;
+    }
     private void sendMessage(DataOutputStream myStream, String myMessage) throws IOException {
-        byte[] myWriteBuffer = new byte[1024];
         byte[] myMessageByte = myMessage.getBytes(("UTF-8"));
-        int numberOfBytesWrite = 0;
-        myStream.write(myMessageByte,0,myMessageByte.length);
+        int numberOfBytesWrite = myMessageByte.length;
+        byte[] toSendLenBytes = new byte[4];
+        toSendLenBytes[0] = (byte)(numberOfBytesWrite & 0xff);
+        toSendLenBytes[1] = (byte)((numberOfBytesWrite >> 8) & 0xff);
+        toSendLenBytes[2] = (byte)((numberOfBytesWrite >> 16) & 0xff);
+        toSendLenBytes[3] = (byte)((numberOfBytesWrite >> 24) & 0xff);
+        myStream.write(toSendLenBytes);
+        myStream.write(myMessageByte);
         myStream.flush();
     }
 
@@ -195,7 +211,6 @@ public class ConnService extends IntentService {
                 //call internal method that sends it over network
                 sendNotificationOverNetwork(notification);
             }
-
             if(ACTION_CONNECT.equals(action)){
                 //internal method that connects to a network
                 String myIP = intent.getStringExtra("IP");
