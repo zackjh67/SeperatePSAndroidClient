@@ -1,6 +1,7 @@
 package com.example.phil.phonesim;
 
 import android.app.IntentService;
+import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Parcelable;
@@ -17,7 +18,11 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
+
+import static java.lang.Thread.sleep;
+
 
 public class ConnService extends IntentService {
     static Socket controlSocket;
@@ -37,6 +42,12 @@ public class ConnService extends IntentService {
     public static final String BROADCAST_CONNECTED = "com.example.phil.phonesim.extra.BROADCAST_CONNECTED";
     public static final String BROADCAST_DISCONNECTED = "com.example.phil.phonesim.extra.BROADCAST_DISCONNECTED";
     public static final String BROADCAST_NOTIFICATION_SENT = "com.example.phil.phonesim.extra.BROADCAST_NOTIFICATION_SENT";
+
+    //TODO change to something meaningful later or delete i guess
+    public static final String BROADCAST_TEST = "com.example.phil.phonesim.extra.BROADCAST_TEST";
+
+    //Action for ReplyReceiver braodcast reciever
+    public static final String REPLY_ACTION = "com.example.phil.phonesim.REPLY_RECEIVER";
 
 
     //extras passed back broadcast reciever
@@ -73,17 +84,18 @@ public class ConnService extends IntentService {
     }
 
     /**
-    * this is the actual logic that the sendNotification intent method invokes
-    *
-    * sends notification over network to client
-    *
-    * */
+     * this is the actual logic that the sendNotification intent method invokes
+     *
+     * sends notification over network to client
+     *
+     * */
     private void sendNotificationOverNetwork(Parcelable notification) {
         if(connected) {
             try {
 
                 //unwrap parcelable notification to access the data
                 ParcelableNotification n = Parcels.unwrap(notification);
+
                 //TODO maybe use JSON format for messages, for now we will just pass the full
                 //text of the notification as a String
                 String test = n.getNotificationText();
@@ -108,25 +120,85 @@ public class ConnService extends IntentService {
             //Try to Create Control Socket for connection
             controlSocket = new Socket(myIP,Integer.parseInt(myPort));
 
-                    /* data passed to server */
+            /* data passed to server */
             controlOut =
                     new DataOutputStream(
                             new BufferedOutputStream(
-                            controlSocket.getOutputStream()));
+                                    controlSocket.getOutputStream()));
             sendMessage(controlOut,"Connect");
-                    /* data passed to client */
+            /* data passed to client */
             controlIn =
                     new DataInputStream(
                             new BufferedInputStream(
                                     controlSocket.getInputStream()));
-            String myResponse = getMessage(controlIn);
-            if(myResponse.contains("404 OK")) {
+           // String myResponse = getMessage(controlIn);
+            if(true){//myResponse.contains("404 OK")) {
                 //If you made it this far your connected
-                Log.i("connected", "connected to the server");
+                //Log.i("connected", "connected to the server");
                 connected = true;
 
                 //return intent with result code signalling connection successful
                 Intent result = new Intent(BROADCAST_CONNECTED);
+
+
+                //start listening thread for data input stream
+                final DataInputStream input = controlIn;
+
+                final LocalBroadcastManager testerooni = LocalBroadcastManager.getInstance(this);
+
+
+                Thread t = new Thread(new Runnable(){
+
+                    LocalBroadcastManager stuff = testerooni;
+                    DataInputStream input2 = input;
+
+                    @Override
+                    public void run() {
+                        int i = 0;
+
+                        while(true){
+                            //i++;
+
+                            byte[] lenBytes = new byte[4];
+                            int numberOfBytesRead = 0;
+                            StringBuilder myCompleteMessage = new StringBuilder();
+                            //do{
+                            //   numberOfBytesRead = myStream.read(myReadBuffer,0,myReadBuffer.length);
+                            //   myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
+                            //}while(myStream.available() > 0);
+
+                            try {
+                                input2.read(lenBytes, 0, 4);
+                                numberOfBytesRead = bytesToInt(lenBytes);
+                                byte[] myReadBuffer = new byte[numberOfBytesRead];
+                                input2.read(myReadBuffer, 0, numberOfBytesRead);
+                                myCompleteMessage.append(new String(myReadBuffer, "UTF-8"));
+
+                            }catch(Exception e){
+                                Log.d("test", e.toString());
+                            }
+                            //return myCompleteMessage.toString();
+
+
+//                            if(i % 1000 == 0) {
+                                Log.d("test", "thread doing stuff");
+                                Intent intent = new Intent(BROADCAST_TEST);
+                                intent.putExtra("TEST", myCompleteMessage.toString());
+//
+                                stuff.sendBroadcast(intent);
+//
+//                                i = 0;
+//                            }
+                            try {
+                                sleep(1);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                });
+
+                t.start();
 
                 //send intent to broadcast receiver
                 LocalBroadcastManager.getInstance(this).sendBroadcast(result);
@@ -138,6 +210,7 @@ public class ConnService extends IntentService {
             //If you can't connect its a bad name or port
             Log.d("Socket connect error", e.toString());
         }
+
     }
 
     private String getMessage(DataInputStream myStream)  throws IOException {
@@ -198,8 +271,8 @@ public class ConnService extends IntentService {
     }
 
     /*
-    * this method handles the recursive intents passed to this service
-    * */
+     * this method handles the recursive intents passed to this service
+     * */
     @Override
     protected void onHandleIntent(Intent intent) {
         if (intent != null) {
@@ -224,3 +297,9 @@ public class ConnService extends IntentService {
         }
     }
 }
+
+
+
+
+
+
