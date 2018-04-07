@@ -1,6 +1,10 @@
 package com.example.phil.phonesim;
 
+import android.app.Notification;
+
 import org.parceler.Parcel;
+
+import java.util.List;
 
 /**
  * Created by Zack on 1/29/2018.

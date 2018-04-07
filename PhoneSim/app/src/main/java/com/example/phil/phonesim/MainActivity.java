@@ -21,6 +21,7 @@ import android.widget.Toast;
 
 import org.parceler.Parcels;
 
+
 //SPRINT 2
 public class MainActivity extends AppCompatActivity {
     //Used for ConnService
@@ -56,17 +57,16 @@ public class MainActivity extends AppCompatActivity {
         ctx = this;
         setContentView(R.layout.activity_main);
 
-
         // If the user did not turn the notification listener service on we prompt him to do so
         //I have this ask every time for debugging reasons... for some if you are using a personal
         //android device instead of the VM, your phone may need to be restarted to get the notification
         //listener service working again when demoing the app. This apparantly shouldn't happen with the
         //APK version, but look out for issues
 
-        if(!isNotificationServiceEnabled()){
+        //if(!isNotificationServiceEnabled()){
             enableNotificationListenerAlertDialog = buildNotificationServiceAlertDialog();
             enableNotificationListenerAlertDialog.show();
-        }
+        //}
 
         //connect button
         connectButton = findViewById(R.id.connect_button);
@@ -108,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
         portText = findViewById(R.id.portText);
         isNotificationServiceEnabled();
     }
+
+
     //checks if service is running or not
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
@@ -125,30 +127,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        registerIntentFilter();
+
         //filter for connected
         //the certain intent to listen for, ignores all others
-        IntentFilter connectedFilter;
-        //broadcast status code sent through an intent from ConnService
-        connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, connectedFilter);
-
-        //TODO register disconnect intent filter (same as above) (done by zack yo)
-        IntentFilter disconnectedFilter;
-        //broadcast status code sent through an intent from ConnService
-        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, disconnectedFilter);
-
-        //filter for notification sent
-        IntentFilter notificationSentFilter;
-        //broadcast status code sent through an intent from ConnService
-        notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, notificationSentFilter);
+//        IntentFilter connectedFilter;
+//        //broadcast status code sent through an intent from ConnService
+//        connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
+//        //registering receiver to start listening for this intent
+//        LocalBroadcastManager.getInstance(this).registerReceiver
+//                (statusReceiver, connectedFilter);
+//
+//        IntentFilter disconnectedFilter;
+//        //broadcast status code sent through an intent from ConnService
+//        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
+//        //registering receiver to start listening for this intent
+//        LocalBroadcastManager.getInstance(this).registerReceiver
+//                (statusReceiver, disconnectedFilter);
+//
+//        //filter for notification sent
+//        IntentFilter notificationSentFilter;
+//        //broadcast status code sent through an intent from ConnService
+//        notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
+//        //registering receiver to start listening for this intent
+//        LocalBroadcastManager.getInstance(this).registerReceiver
+//                (statusReceiver, notificationSentFilter);
     }
 
     /**
@@ -208,10 +211,15 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Message Sent", Toast.LENGTH_SHORT).show();
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_CONNECTED)){
-                Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_DISCONNECTED)){
                 Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
+            } else if(intent.getAction().equals(ConnService.BROADCAST_TEST)){
+                String str = intent.getStringExtra("TEST");
+
+                //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
+                Log.d("test", "Still here yo");
             }
         }
     };
@@ -219,19 +227,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver);
+        //LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        registerIntentFilter();
+        //registerIntentFilter();
     }
 
     @Override
     protected void onRestart() {
         super.onRestart();
-        registerIntentFilter();
+        //registerIntentFilter();
 
     }
 
@@ -259,5 +267,14 @@ public class MainActivity extends AppCompatActivity {
         //registering receiver to start listening for this intent
         LocalBroadcastManager.getInstance(this).registerReceiver
                 (statusReceiver, notificationSentFilter);
+
+        //testing
+        //filter for notification sent
+        IntentFilter notificationTestFilter;
+        //broadcast status code sent through an intent from ConnService
+        notificationTestFilter = new IntentFilter(ConnService.BROADCAST_TEST);
+        //registering receiver to start listening for this intent
+        LocalBroadcastManager.getInstance(this).registerReceiver
+                (statusReceiver, notificationTestFilter);
     }
 }
