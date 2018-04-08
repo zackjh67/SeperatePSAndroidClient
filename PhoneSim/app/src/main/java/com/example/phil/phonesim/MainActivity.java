@@ -269,12 +269,19 @@ public class MainActivity extends AppCompatActivity {
             else if(intent.getAction().equals(ConnService.BROADCAST_DISCONNECTED)){
                 Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
             } else if(intent.getAction().equals(ConnService.BROADCAST_TEST)){
-                String str = intent.getStringExtra("TEST");
-                DoSTUFF(str, str);
+                String str = intent.getStringExtra("Message");
+                if(str.length()> 0){
+                    if(str.equals("404 OK")){
+
+                    }else
+                    {
+                        DoSTUFF(str, str);
+                    }
+                }
                 //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
                 Log.d("test", "Still here yo");
             }
-        }
+zf        }
     };
 
     @Override

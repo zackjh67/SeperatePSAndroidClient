@@ -154,11 +154,7 @@ public class ConnService extends IntentService {
 
                     @Override
                     public void run() {
-                        int i = 0;
-
                         while(true){
-                            //i++;
-
                             byte[] lenBytes = new byte[4];
                             int numberOfBytesRead = 0;
                             StringBuilder myCompleteMessage = new StringBuilder();
@@ -166,7 +162,6 @@ public class ConnService extends IntentService {
                             //   numberOfBytesRead = myStream.read(myReadBuffer,0,myReadBuffer.length);
                             //   myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
                             //}while(myStream.available() > 0);
-
                             try {
                                 input2.read(lenBytes, 0, 4);
                                 numberOfBytesRead = bytesToInt(lenBytes);
@@ -177,21 +172,11 @@ public class ConnService extends IntentService {
                             }catch(Exception e){
                                 Log.d("test", e.toString());
                             }
-                            //return myCompleteMessage.toString();
-
-
-//                            if(i % 1000 == 0) {
-                                Log.d("test", "thread doing stuff");
+                            Log.d("test", "thread doing stuff");
+                            if(myCompleteMessage.length() > 0) {
                                 Intent intent = new Intent(BROADCAST_TEST);
                                 intent.putExtra("Message", myCompleteMessage.toString());
                                 stuff.sendBroadcast(intent);
-//
-//                                i = 0;
-//                            }
-                            try {
-                                sleep(1);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
                             }
                         }
                     }

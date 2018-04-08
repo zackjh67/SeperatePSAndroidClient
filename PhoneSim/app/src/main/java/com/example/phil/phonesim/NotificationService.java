@@ -76,11 +76,7 @@ public class NotificationService extends NotificationListenerService {
         if (checkValidNotification(sbn.getPackageName())){
             //found this shit here:
             //http://www.androiddevelopersolutions.com/2015/05/android-read-status-bar-notification.html
-            String pack = sbn.getPackageName();
-            String ticker = "";
-            if (sbn.getNotification().tickerText != null) {
-                ticker = sbn.getNotification().tickerText.toString();
-            }
+            /* No Longer NEeded
 
             Notification.WearableExtender myExtender = new Notification.WearableExtender(sbn.getNotification());
             List<Notification.Action> actions = myExtender.getActions();
@@ -100,6 +96,13 @@ public class NotificationService extends NotificationListenerService {
                 }
             }
 
+            */
+            String pack = sbn.getPackageName();
+            String ticker = "";
+            if (sbn.getNotification().tickerText != null) {
+                ticker = sbn.getNotification().tickerText.toString();
+            }
+            Bundle extras = sbn.getNotification().extras;
             String title = extras.getString("android.title");
             String text = extras.getCharSequence("android.text").toString();
             //just logs in Logcat for debugging
@@ -118,7 +121,7 @@ public class NotificationService extends NotificationListenerService {
             //and then wraps it to become a Parcelable object in order for the data to be passed
             //using Intents.
             ParcelableNotification toWrap = new ParcelableNotification(pack, ticker, title, text);
-            toWrap.addActions(myArray);
+            //toWrap.addActions(myArray);
             Parcelable n = Parcels.wrap(toWrap);
 
             //call method from ConnService to send notification to server
