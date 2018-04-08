@@ -13,6 +13,7 @@ import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.text.TextUtils;
 
@@ -20,6 +21,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -110,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
             //Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + "(616) 808-6005"));
             //intent.putExtra("sms_body", "On Vive right now");
             //startActivity(intent);
-            DoSTUFF("Phil Garza", "Doing STuff");
+            DoSTUFF("(616) 808-6005", "Doing STuff");
         });
 
         ipText = findViewById(R.id.ipText);
@@ -120,43 +122,46 @@ public class MainActivity extends AppCompatActivity {
 
     private void DoSTUFF(String sender, String Message){
         String contactNumber = "";
-        //
-//  Find contact based on name.
-//
-        ContentResolver cr = getContentResolver();
-        Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
-                "DISPLAY_NAME = '" + sender + "'", null, null);
-        if (cursor.moveToFirst()) {
-            String contactId =
-                    cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+        if(Patterns.PHONE.matcher(sender).matches()){
+            contactNumber = sender;
+        }else {
             //
-            //  Get all phone numbers.
-            //
-            Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
-                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + contactId, null, null);
-            if (phones.getCount() > 1){
-            while (phones.moveToNext()) {
-                String number = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                int type = phones.getInt(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE));
-                switch (type) {
-                    case ContactsContract.CommonDataKinds.Phone.TYPE_HOME:
-                        // do something with the Home number here...
-                        break;
-                    case ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE:
-                        // do something with the Mobile number here...
-                        break;
-                    case ContactsContract.CommonDataKinds.Phone.TYPE_WORK:
-                        // do something with the Work number here...
-                        break;
+            //  Find contact based on name.
+            ContentResolver cr = getContentResolver();
+            Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
+                    "DISPLAY_NAME = '" + sender + "'", null, null);
+            if (cursor.moveToFirst()) {
+                String contactId =
+                        cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+                //
+                //  Get all phone numbers.
+                //
+                Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+                        ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + contactId, null, null);
+                if (phones.getCount() > 1) {
+                    while (phones.moveToNext()) {
+                        String number = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        int type = phones.getInt(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE));
+                        switch (type) {
+                            case ContactsContract.CommonDataKinds.Phone.TYPE_HOME:
+                                // do something with the Home number here...
+                                break;
+                            case ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE:
+                                // do something with the Mobile number here...
+                                break;
+                            case ContactsContract.CommonDataKinds.Phone.TYPE_WORK:
+                                // do something with the Work number here...
+                                break;
+                        }
+                    }
+                } else {
+                    phones.moveToFirst();
+                    contactNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
                 }
+                phones.close();
             }
-            }else{
-                phones.moveToFirst();
-                contactNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                }
-            phones.close();
+            cursor.close();
         }
-        cursor.close();
         if(contactNumber.equals("")){
             contactNumber = "6168086005";
         }
@@ -281,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
                 //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
                 Log.d("test", "Still here yo");
             }
-zf        }
+        }
     };
 
     @Override
