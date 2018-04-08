@@ -183,8 +183,7 @@ public class ConnService extends IntentService {
 //                            if(i % 1000 == 0) {
                                 Log.d("test", "thread doing stuff");
                                 Intent intent = new Intent(BROADCAST_TEST);
-                                intent.putExtra("TEST", myCompleteMessage.toString());
-//
+                                intent.putExtra("Message", myCompleteMessage.toString());
                                 stuff.sendBroadcast(intent);
 //
 //                                i = 0;

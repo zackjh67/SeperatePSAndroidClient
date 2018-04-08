@@ -1,26 +1,23 @@
 package com.example.phil.phonesim;
 
-//import android.app.Notification;
-//import android.content.BroadcastReceiver;
-//import android.content.Context;
-//import android.content.Intent;
-//import android.content.IntentFilter;
-//import android.graphics.Bitmap;
 import android.app.Notification;
+import android.app.PendingIntent;
+import android.app.RemoteInput;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.Bundle;
-//import android.os.IBinder;
-import android.os.IBinder;
 import android.os.Parcelable;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
-//import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
+import android.util.SparseArray;
+
+
+import com.google.gson.Gson;
 
 import org.parceler.Parcels;
 
@@ -28,40 +25,43 @@ import java.util.Arrays;
 import java.util.List;
 
 public class NotificationService extends NotificationListenerService {
+
+    private SparseArray<NotificationHolder> mapOfNotifications;
+    private int index = 0;
     private List<String> myList = Arrays.asList(
             "com.google.android.talk",
             "com.android.mms",
-            "com.google.android.apps.messaging"
+            "com.google.android.apps.messaging",
+            "com.facebook.orca"
     );
 
     @Override
     public void onListenerConnected() {
         super.onListenerConnected();
-
-        BroadcastReceiver statusReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals(ConnService.BROADCAST_TEST)) {
-                    String str = intent.getStringExtra("TEST");
-
-                    //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
-                    Log.d("test", "in notif svc yo");
-
-
-                    //doing stuff
-                    ParcelableNotification toWrap = new ParcelableNotification("test", "tester", "testest", str);
-                    Parcelable n = Parcels.wrap(toWrap);
-                    //call method from ConnService to send notification to server
-                    ConnService.sendNotification(getApplicationContext(), n);
-                }
-            }
-        };
-        //the certain intent to listen for, ignores all others
-        IntentFilter connectedFilter;
-        //broadcast status code sent through an intent from ConnService
-        connectedFilter = new IntentFilter(ConnService.BROADCAST_TEST);
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, connectedFilter);
+//        mapOfNotifications = new SparseArray<NotificationHolder>();
+//
+//        BroadcastReceiver statusReceiver = new BroadcastReceiver() {
+//            @Override
+//            public void onReceive(Context context, Intent intent) {
+//                if (intent.getAction().equals(ConnService.BROADCAST_TEST)) {
+//                    String str = intent.getStringExtra("TEST");
+//
+//                    //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
+//                    Log.d("test", "in notif svc yo");
+//
+//                    ParcelableNotification toWrap = new ParcelableNotification(
+//                            "test", "tester", "testest", str);
+//                    Parcelable n = Parcels.wrap(toWrap);
+//                    ConnService.sendNotification(getApplicationContext(), n);
+//                }
+//            }
+//        };
+//        //the certain intent to listen for, ignores all others
+//        IntentFilter connectedFilter;
+//        //broadcast status code sent through an intent from ConnService
+//        connectedFilter = new IntentFilter(ConnService.BROADCAST_TEST);
+//        LocalBroadcastManager.getInstance(this).registerReceiver
+//                (statusReceiver, connectedFilter);
     }
 
 
@@ -71,10 +71,8 @@ public class NotificationService extends NotificationListenerService {
      * */
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
-        //TODO figure out which notifications are which and parse them accordingly so the app doesn't crash
-        //sometimes
-        Log.i("NOTIFPASSED", "notification passed");
-        Log.i("PACKAGE", sbn.getPackageName());
+
+        Log.i("NOTI_FOUND", sbn.getPackageName());
         if (checkValidNotification(sbn.getPackageName())){
             //found this shit here:
             //http://www.androiddevelopersolutions.com/2015/05/android-read-status-bar-notification.html
@@ -83,10 +81,25 @@ public class NotificationService extends NotificationListenerService {
             if (sbn.getNotification().tickerText != null) {
                 ticker = sbn.getNotification().tickerText.toString();
             }
+
             Notification.WearableExtender myExtender = new Notification.WearableExtender(sbn.getNotification());
             List<Notification.Action> actions = myExtender.getActions();
-
             Bundle extras = sbn.getNotification().extras;
+            String myArray = "";
+            for(Notification.Action act : actions){
+                if (act != null && act.getRemoteInputs() != null){
+                    NotificationHolder myHolder = new NotificationHolder();
+                    myHolder.remInput = act.getRemoteInputs();
+                    RemoteInput[] remoteInputs = myHolder.remInput;
+                    myHolder.myBundle = sbn.getNotification().extras;
+                    myHolder.myIntent = sbn.getNotification().contentIntent;
+                    myJSONClass toPass = new myJSONClass(remoteInputs,index,sbn.getTag());
+                    mapOfNotifications.append(index,myHolder);
+                    index++;
+                    myArray = new Gson().toJson(toPass);
+                }
+            }
+
             String title = extras.getString("android.title");
             String text = extras.getCharSequence("android.text").toString();
             //just logs in Logcat for debugging
@@ -100,15 +113,19 @@ public class NotificationService extends NotificationListenerService {
             Log.i("Title", title);
             //text in a text message format would be the actual body of the text
             Log.i("Text", text);
-            //////////////////////////////////////////////////////////
-
+            /////////////////////////////////////////////////////////
             //this creates a new ParcelableNotification from the given notification components
             //and then wraps it to become a Parcelable object in order for the data to be passed
             //using Intents.
             ParcelableNotification toWrap = new ParcelableNotification(pack, ticker, title, text);
+            toWrap.addActions(myArray);
             Parcelable n = Parcels.wrap(toWrap);
+
             //call method from ConnService to send notification to server
             ConnService.sendNotification(this, n);
+
+            //Testing FOr Now
+            //ReplyToNotification(index - 1, "");
         }
 
     }
@@ -116,10 +133,32 @@ public class NotificationService extends NotificationListenerService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         ConnService.disconnect(getApplicationContext());
     }
 
+    private void ReplyToNotification(int indexToRespond, String Message){
+//        NotificationHolder respondTo = mapOfNotifications.get(indexToRespond);
+//        RemoteInput[] remoteInputs = new RemoteInput[respondTo.remInput.length];
+//
+//        Intent localIntent = new Intent();
+//        localIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//        Bundle localBundle = respondTo.myBundle;
+//        int i = 0;
+//        for(RemoteInput remoteIn : respondTo.remInput){
+//            remoteInputs[i] = remoteIn;
+//            localBundle.putCharSequence(remoteInputs[i].getResultKey(), "On Vive right now");//This work, apart from Hangouts as probably they need additional parameter (notification_tag?)
+//            i++;
+//        }
+//        RemoteInput.addResultsToIntent(remoteInputs, localIntent, localBundle);
+//        //try {
+//            //respondTo.myIntent.send(getApplicationContext(), 0, localIntent);
+//        //} catch (PendingIntent.CanceledException e) {
+//        //    Log.e("RESPONSE", "replyToLastNotification error: " + e.getLocalizedMessage());
+//        //}
+//        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + "(616) 808-6005"));
+//        intent.putExtra("sms_body", "On Vive right now");
+//        startActivity(intent);
+    }
     /*
     * Haven't really done anything with this method, but gets signal for when a notification
     * is 'dismissed'
@@ -139,5 +178,22 @@ public class NotificationService extends NotificationListenerService {
                 return true;
         }
         return false;
+    }
+
+    private class myJSONClass {
+        public List<RemoteInput> myRemotes;
+        public int PrimaryKey;
+        public String OtherStuff;
+        public myJSONClass(RemoteInput[] pArray, int pKey, String pString){
+            myRemotes = Arrays.asList(pArray);
+            PrimaryKey = pKey;
+            OtherStuff = pString;
+        }
+    }
+
+    private class NotificationHolder {
+        public RemoteInput[] remInput;
+        public PendingIntent myIntent;
+        public Bundle myBundle;
     }
 }

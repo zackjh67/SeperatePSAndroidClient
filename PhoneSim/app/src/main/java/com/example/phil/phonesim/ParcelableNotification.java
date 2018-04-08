@@ -2,6 +2,7 @@ package com.example.phil.phonesim;
 
 import android.app.Notification;
 
+import org.json.JSONArray;
 import org.parceler.Parcel;
 
 import java.util.List;
@@ -51,6 +52,7 @@ public class ParcelableNotification {
     String nTicker;
     String nTitle;
     String nText;
+    String nActions;
 
     public ParcelableNotification(){
 
@@ -61,6 +63,10 @@ public class ParcelableNotification {
         this.nTicker = nTicker;
         this.nTitle = nTitle;
         this.nText = nText;
+    }
+
+    public void addActions(String myActions){
+        this.nActions = myActions.toString();
     }
 
 
