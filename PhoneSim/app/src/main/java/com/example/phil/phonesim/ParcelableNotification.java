@@ -15,6 +15,11 @@ import java.util.List;
 //parcelables are used to transfer Java objects via intents
 @Parcel
 public class ParcelableNotification {
+
+
+
+
+
     public String getNotificationPackage() {
         return nPackage;
     }
@@ -52,23 +57,18 @@ public class ParcelableNotification {
     String nTicker;
     String nTitle;
     String nText;
-    String nActions;
+    String nKey;
 
     public ParcelableNotification(){
 
     }
 
-    public ParcelableNotification(String nPackage, String nTicker, String nTitle, String nText){
+    public ParcelableNotification(String nPackage, String nTicker, String nTitle, String nText, String nKey){
         this.nPackage = nPackage;
         this.nTicker = nTicker;
         this.nTitle = nTitle;
         this.nText = nText;
+        this.nKey = nKey;
     }
-
-    public void addActions(String myActions){
-        this.nActions = myActions.toString();
-    }
-
-
 }
 

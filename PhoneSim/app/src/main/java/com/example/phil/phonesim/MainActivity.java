@@ -26,6 +26,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import org.json.JSONObject;
 import org.parceler.Parcels;
 
 
@@ -80,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         connectButton.setOnClickListener(v -> {
             //calls server method to connect to socket
             if(ipText.getText().toString().equals("")){
-                ipText.setText("192.168.88.208");
+                ipText.setText("192.168.88.234");
                 portText.setText("1337");
             }
             ConnService.connect(getCtx(),
@@ -106,13 +107,11 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(v -> {
             Log.i("CLICKED", "you clicked send");
             //sends a test notification for now
-            ParcelableNotification n = new ParcelableNotification("test", "test", "test", "This is a really long string because zack wants it to be super long because he loves JSON so much he shoul dmarry it. ");
+            ParcelableNotification n = new ParcelableNotification("package", "tick", "title",
+                    "TTest String", "69");
             Parcelable parcN = Parcels.wrap(n);
             ConnService.sendNotification(getCtx(), parcN);
-            //Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + "(616) 808-6005"));
-            //intent.putExtra("sms_body", "On Vive right now");
-            //startActivity(intent);
-            DoSTUFF("(616) 808-6005", "Doing STuff");
+
         });
 
         ipText = findViewById(R.id.ipText);
@@ -120,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
         isNotificationServiceEnabled();
     }
 
-    private void DoSTUFF(String sender, String Message){
+    private void SendSMSMessage(String sender, String Message){
         String contactNumber = "";
         if(Patterns.PHONE.matcher(sender).matches()){
             contactNumber = sender;
@@ -129,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
             //  Find contact based on name.
             ContentResolver cr = getContentResolver();
             Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
+
                     "DISPLAY_NAME = '" + sender + "'", null, null);
             if (cursor.moveToFirst()) {
                 String contactId =
@@ -163,53 +163,17 @@ public class MainActivity extends AppCompatActivity {
             cursor.close();
         }
         if(contactNumber.equals("")){
-            contactNumber = "6168086005";
+            Log.i("Main", "DoSTUFF: PROBELM SEARCHING CONTACTS");
+        }else{
+            SmsManager sm = SmsManager.getDefault();
+            sm.sendTextMessage(contactNumber,null,Message,null,null);
         }
-        SmsManager sm = SmsManager.getDefault();
-        sm.sendTextMessage(contactNumber,null,Message,null,null);
-    }
-    //checks if service is running or not
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                Log.i ("isMyServiceRunning?", true+"");
-                return true;
-            }
-        }
-        Log.i ("isMyServiceRunning?", false+"");
-        return false;
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-
         registerIntentFilter();
-
-        //filter for connected
-        //the certain intent to listen for, ignores all others
-//        IntentFilter connectedFilter;
-//        //broadcast status code sent through an intent from ConnService
-//        connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
-//        //registering receiver to start listening for this intent
-//        LocalBroadcastManager.getInstance(this).registerReceiver
-//                (statusReceiver, connectedFilter);
-//
-//        IntentFilter disconnectedFilter;
-//        //broadcast status code sent through an intent from ConnService
-//        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
-//        //registering receiver to start listening for this intent
-//        LocalBroadcastManager.getInstance(this).registerReceiver
-//                (statusReceiver, disconnectedFilter);
-//
-//        //filter for notification sent
-//        IntentFilter notificationSentFilter;
-//        //broadcast status code sent through an intent from ConnService
-//        notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
-//        //registering receiver to start listening for this intent
-//        LocalBroadcastManager.getInstance(this).registerReceiver
-//                (statusReceiver, notificationSentFilter);
     }
 
     /**
@@ -280,33 +244,19 @@ public class MainActivity extends AppCompatActivity {
 
                     }else
                     {
-                        DoSTUFF(str, str);
+                        try {
+                            JSONObject myMessage = new JSONObject(str);
+                            String who = myMessage.getString("who");
+                            String toSend = myMessage.getString("message");
+                            SendSMSMessage(who,toSend);
+                        } catch (Throwable t){
+                            Log.e("Json", "Could not parse json");
+                        }
                     }
                 }
-                //Toast.makeText(MainActivity.this, str, Toast.LENGTH_LONG).show();
-                Log.d("test", "Still here yo");
             }
         }
     };
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        //LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        //registerIntentFilter();
-    }
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        //registerIntentFilter();
-
-    }
 
     protected void registerIntentFilter(){
         //filter for connected

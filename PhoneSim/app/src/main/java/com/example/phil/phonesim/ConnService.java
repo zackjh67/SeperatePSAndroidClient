@@ -2,6 +2,7 @@ package com.example.phil.phonesim;
 
 import android.app.IntentService;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Parcelable;
@@ -31,6 +32,7 @@ public class ConnService extends IntentService {
 
     //connection status, persist across all intent service calls
     static boolean connected = false;
+    static boolean killChild = false;
 
     // intent actions
     private static final String ACTION_CONNECT = "com.example.phil.phonesim.action.ACTION_CONNECT";
@@ -46,11 +48,7 @@ public class ConnService extends IntentService {
     //TODO change to something meaningful later or delete i guess
     public static final String BROADCAST_TEST = "com.example.phil.phonesim.extra.BROADCAST_TEST";
 
-    //Action for ReplyReceiver braodcast reciever
-    public static final String REPLY_ACTION = "com.example.phil.phonesim.REPLY_RECEIVER";
-
-
-    //extras passed back broadcast reciever
+    //extras passed back broadcast receiver
     public static final String EXTRA_NOTIFICATION = "com.example.phil.phonesim.extra.EXTRA_NOTIFICATION";
 
     public ConnService() {
@@ -92,7 +90,6 @@ public class ConnService extends IntentService {
     private void sendNotificationOverNetwork(Parcelable notification) {
         if(connected) {
             try {
-
                 //unwrap parcelable notification to access the data
                 ParcelableNotification n = Parcels.unwrap(notification);
 
@@ -117,6 +114,7 @@ public class ConnService extends IntentService {
 
     private void connectToNetwork(String myIP, String myPort) {
         try{
+            killChild = false;
             //Try to Create Control Socket for connection
             controlSocket = new Socket(myIP,Integer.parseInt(myPort));
 
@@ -144,17 +142,17 @@ public class ConnService extends IntentService {
                 //start listening thread for data input stream
                 final DataInputStream input = controlIn;
 
-                final LocalBroadcastManager testerooni = LocalBroadcastManager.getInstance(this);
+                final LocalBroadcastManager myBroadcast = LocalBroadcastManager.getInstance(this);
 
 
                 Thread t = new Thread(new Runnable(){
 
-                    LocalBroadcastManager stuff = testerooni;
+                    LocalBroadcastManager stuff = myBroadcast;
                     DataInputStream input2 = input;
 
                     @Override
                     public void run() {
-                        while(true){
+                        while(connected){
                             byte[] lenBytes = new byte[4];
                             int numberOfBytesRead = 0;
                             StringBuilder myCompleteMessage = new StringBuilder();
@@ -170,15 +168,18 @@ public class ConnService extends IntentService {
                                 myCompleteMessage.append(new String(myReadBuffer, "UTF-8"));
 
                             }catch(Exception e){
-                                Log.d("test", e.toString());
+                                Log.d("StreamThread", e.toString());
                             }
-                            Log.d("test", "thread doing stuff");
                             if(myCompleteMessage.length() > 0) {
                                 Intent intent = new Intent(BROADCAST_TEST);
                                 intent.putExtra("Message", myCompleteMessage.toString());
                                 stuff.sendBroadcast(intent);
                             }
+                            if(killChild){
+                                return;
+                            }
                         }
+                        return;
                     }
                 });
 
@@ -212,6 +213,9 @@ public class ConnService extends IntentService {
         myCompleteMessage.append(new String(myReadBuffer,"UTF-8"));
         return myCompleteMessage.toString();
     }
+
+    //Converts From a Byte Array to Integer
+    //Java lacks this method
     private int bytesToInt(byte[] byteValue){
         int value = 0;
         for(int i = 0; i < byteValue.length; i++){
@@ -237,6 +241,7 @@ public class ConnService extends IntentService {
             try {
                 sendMessage(controlOut,"Disconnect\r\n");
                 connected  = false;
+                killChild = true;
                 controlOut.close();
                 controlSocket.close();
 
