@@ -1,16 +1,22 @@
 package com.example.phil.phonesim;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.os.PersistableBundle;
 import android.provider.ContactsContract;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.telephony.PhoneNumberUtils;
@@ -35,9 +41,12 @@ public class MainActivity extends AppCompatActivity {
     //Used for ConnService
     //Returns CTX
     Context ctx;
+    public volatile boolean isConnected = false;
+    private static boolean registered = false;
 
     //alert dialog prompting user to enable notification listening permissions for our app
     private AlertDialog enableNotificationListenerAlertDialog;
+    private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 11;
 
     //sys codes used by the alert dialog
     private static final String ENABLED_NOTIFICATION_LISTENERS = "enabled_notification_listeners";
@@ -64,6 +73,39 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ctx = this;
         setContentView(R.layout.activity_main);
+
+        // Here, thisActivity is the current activity
+        if (ContextCompat.checkSelfPermission(ctx,
+                Manifest.permission.READ_CONTACTS)
+                != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(ctx,
+                        Manifest.permission.SEND_SMS)
+                        != PackageManager.PERMISSION_GRANTED) {
+
+            // Permission is not granted
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+                    Manifest.permission.READ_CONTACTS)) {
+
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+
+            } else {
+
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{Manifest.permission.READ_CONTACTS,
+                                Manifest.permission.SEND_SMS},
+                        MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                // app-defined int constant. The callback method gets the
+                // result of the request.
+            }
+        } else {
+            // Permission has already been granted
+        }
 
         // If the user did not turn the notification listener service on we prompt him to do so
         //I have this ask every time for debugging reasons... for some if you are using a personal
@@ -117,6 +159,31 @@ public class MainActivity extends AppCompatActivity {
         ipText = findViewById(R.id.ipText);
         portText = findViewById(R.id.portText);
         isNotificationServiceEnabled();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    // permission was granted, yay! Do the
+                    // contacts-related task you need to do.
+
+                } else {
+
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request.
+        }
     }
 
     private void SendSMSMessage(String sender, String Message){
@@ -234,14 +301,17 @@ public class MainActivity extends AppCompatActivity {
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_CONNECTED)){
                 //Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+                Log.d("BroadCastB","Broadcast Test");
+                isConnected = true;
             }
             else if(intent.getAction().equals(ConnService.BROADCAST_DISCONNECTED)){
                 Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
             } else if(intent.getAction().equals(ConnService.BROADCAST_TEST)){
+                Log.d("BroadCastC","Broadcast Test");
                 String str = intent.getStringExtra("Message");
                 if(str.length()> 0){
                     if(str.equals("404 OK")){
-
+                        isConnected = true;
                     }else
                     {
                         try {
@@ -259,37 +329,40 @@ public class MainActivity extends AppCompatActivity {
     };
 
     protected void registerIntentFilter(){
-        //filter for connected
-        //the certain intent to listen for, ignores all others
-        IntentFilter connectedFilter;
-        //broadcast status code sent through an intent from ConnService
-        connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, connectedFilter);
+        if(!registered) {
+            //filter for connected
+            //the certain intent to listen for, ignores all others
+            IntentFilter connectedFilter;
+            //broadcast status code sent through an intent from ConnService
+            connectedFilter = new IntentFilter(ConnService.BROADCAST_CONNECTED);
+            //registering receiver to start listening for this intent
+            LocalBroadcastManager.getInstance(this).registerReceiver
+                    (statusReceiver, connectedFilter);
 
-        IntentFilter disconnectedFilter;
-        //broadcast status code sent through an intent from ConnService
-        disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, disconnectedFilter);
+            IntentFilter disconnectedFilter;
+            //broadcast status code sent through an intent from ConnService
+            disconnectedFilter = new IntentFilter(ConnService.BROADCAST_DISCONNECTED);
+            //registering receiver to start listening for this intent
+            LocalBroadcastManager.getInstance(this).registerReceiver
+                    (statusReceiver, disconnectedFilter);
 
-        //filter for notification sent
-        IntentFilter notificationSentFilter;
-        //broadcast status code sent through an intent from ConnService
-        notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, notificationSentFilter);
+            //filter for notification sent
+            IntentFilter notificationSentFilter;
+            //broadcast status code sent through an intent from ConnService
+            notificationSentFilter = new IntentFilter(ConnService.BROADCAST_NOTIFICATION_SENT);
+            //registering receiver to start listening for this intent
+            LocalBroadcastManager.getInstance(this).registerReceiver
+                    (statusReceiver, notificationSentFilter);
 
-        //testing
-        //filter for notification sent
-        IntentFilter notificationTestFilter;
-        //broadcast status code sent through an intent from ConnService
-        notificationTestFilter = new IntentFilter(ConnService.BROADCAST_TEST);
-        //registering receiver to start listening for this intent
-        LocalBroadcastManager.getInstance(this).registerReceiver
-                (statusReceiver, notificationTestFilter);
+            //testing
+            //filter for notification sent
+            IntentFilter notificationTestFilter;
+            //broadcast status code sent through an intent from ConnService
+            notificationTestFilter = new IntentFilter(ConnService.BROADCAST_TEST);
+            //registering receiver to start listening for this intent
+            LocalBroadcastManager.getInstance(this).registerReceiver
+                    (statusReceiver, notificationTestFilter);
+            registered = true;
+        }
     }
 }

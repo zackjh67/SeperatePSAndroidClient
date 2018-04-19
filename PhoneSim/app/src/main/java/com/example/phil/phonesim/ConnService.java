@@ -1,8 +1,6 @@
 package com.example.phil.phonesim;
 
 import android.app.IntentService;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Parcelable;
@@ -19,7 +17,6 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.net.Socket;
 
 import static java.lang.Thread.sleep;
@@ -31,8 +28,11 @@ public class ConnService extends IntentService {
     static DataInputStream controlIn;
 
     //connection status, persist across all intent service calls
-    static boolean connected = false;
-    static boolean killChild = false;
+    private static volatile boolean connected = false;
+    private static volatile boolean killChild = false;
+
+    //Thread variable
+    static Thread listenerThread;
 
     // intent actions
     private static final String ACTION_CONNECT = "com.example.phil.phonesim.action.ACTION_CONNECT";
@@ -145,9 +145,9 @@ public class ConnService extends IntentService {
                 final LocalBroadcastManager myBroadcast = LocalBroadcastManager.getInstance(this);
 
 
-                Thread t = new Thread(new Runnable(){
+                listenerThread = new Thread(new Runnable(){
 
-                    LocalBroadcastManager stuff = myBroadcast;
+                    LocalBroadcastManager stuff =  myBroadcast;
                     DataInputStream input2 = input;
 
                     @Override
@@ -183,7 +183,7 @@ public class ConnService extends IntentService {
                     }
                 });
 
-                t.start();
+                listenerThread.start();
 
                 //send intent to broadcast receiver
                 LocalBroadcastManager.getInstance(this).sendBroadcast(result);
@@ -244,6 +244,7 @@ public class ConnService extends IntentService {
                 killChild = true;
                 controlOut.close();
                 controlSocket.close();
+                listenerThread.interrupt();
 
                 //return intent with result code signalling connection closed
                 Intent result = new Intent(BROADCAST_DISCONNECTED);
